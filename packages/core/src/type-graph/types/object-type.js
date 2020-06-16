@@ -233,7 +233,7 @@ export class ObjectType extends Type {
       this._changeStack === null
         ? [currentSelf]
         : [...this._changeStack, currentSelf];
-    let isAnyPropertyChanged = false;
+    let isAnyPropertyChanged = this.properties.size === 0;
     try {
       const newProperties: Array<[string, VariableInfo<Type>]> = [];
       this.properties.forEach((vInfo, key) => {

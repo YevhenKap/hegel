@@ -20,6 +20,26 @@ and limitations under the License.
 declare var NaN: number;
 declare var Infinity: number;
 
+class Error {
+  name: string;
+  message: string;
+  stack?: string;
+  constructor(message?: string);
+}
+
+class EvalError extends Error {}
+
+class RangeError extends Error {}
+
+class ReferenceError extends Error {}
+
+class SyntaxError extends Error {}
+
+class TypeError extends Error {}
+
+class URIError extends Error {}
+
+
 /**
  * Evaluates JavaScript code and executes it.
  * @param x A String value that contains valid JavaScript code.
@@ -1589,25 +1609,6 @@ interface DateConstructor {
 
 declare var Date: DateConstructor;
 
-class Error {
-  name: string;
-  message: string;
-  stack?: string;
-  constructor(message?: string);
-}
-
-class EvalError extends Error {}
-
-class RangeError extends Error {}
-
-class ReferenceError extends Error {}
-
-class SyntaxError extends Error {}
-
-class TypeError extends Error {}
-
-class URIError extends Error {}
-
 interface JSON {
   //     /**
   //       * Converts a JavaScript Object Notation (JSON) string into an object.
@@ -1665,7 +1666,7 @@ interface TypedPropertyDescriptor<T> {
 
 // declare type PromiseConstructorLike = new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void) => PromiseLike<T>;
 
-interface PromiseLike<T> {
+interface PromiseLike<T extends $Not<this>> {
   //     /**
   //      * Attaches callbacks for the resolution and/or rejection of the Promise.
   //      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1681,7 +1682,7 @@ interface PromiseLike<T> {
 // /**
 //  * Represents the completion of an asynchronous operation
 //  */
-interface Promise<T> {
+interface Promise<T extends $Not<this>> {
   //     /**
   //      * Attaches callbacks for the resolution and/or rejection of the Promise.
   //      * @param onfulfilled The callback to execute when the Promise is resolved.

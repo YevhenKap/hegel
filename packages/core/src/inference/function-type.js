@@ -334,6 +334,9 @@ export function getCallTarget(
   if (callTargetType instanceof TypeVar) {
     callTargetType = Type.getTypeRoot(callTargetType);
   }
+  if (callTargetType instanceof $BottomType) {
+    callTargetType = callTargetType.unpack();
+  }
   if (callTargetType instanceof GenericType) {
     callTargetType = getRawFunctionType(
       callTargetType,
@@ -793,11 +796,9 @@ export function inferenceFunctionTypeByScope(
   const newArgumentsTypes = argumentsTypes.map(t => {
     let result =
       t instanceof TypeVar && t.root != undefined ? Type.getTypeRoot(t) : t;
-    // $FlowIssue
     result = result.changeAll(allVars, allRoots, typeScope);
     if (
       result instanceof TypeVar &&
-      // $FlowIssue
       !isReachableType(result, localTypeScope.parent)
     ) {
       newGenericArguments.add(result);
