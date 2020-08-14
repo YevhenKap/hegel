@@ -1,4 +1,5 @@
 // @flow
+import HegelError from "../../utils/errors";
 import { Type } from "./type";
 import { unique } from "../../utils/common";
 import { TypeVar } from "./type-var";
@@ -23,6 +24,8 @@ export class ObjectType extends Type {
   }
 
   static Object = new TypeVar("Object");
+  static Iterable = new TypeVar("Iterable");
+  static Iterator = new TypeVar("Iterator");
 
   static term(
     name: mixed,
@@ -54,7 +57,7 @@ export class ObjectType extends Type {
   }
 
   static getName(
-    params: Array<[string, any]>,
+    params: Array<[string | TypeVar, any]>,
     type?: ObjectType,
     isSoft?: boolean = false
   ) {
@@ -70,11 +73,11 @@ export class ObjectType extends Type {
       : this.oneLine(properties, isSoft);
   }
 
-  static oneLine(properties: Array<[string, Type]>, isSoft: boolean) {
+  static oneLine(properties: Array<[string | TypeVar, Type]>, isSoft: boolean) {
     return `{ ${properties
       .map(
         ([name, type]) =>
-          `${name}: ${String(
+          `${this.getPropertyString(name)}: ${String(
             Type.getTypeRoot(type instanceof VariableInfo ? type.type : type)
               .name
           )}`
@@ -84,11 +87,11 @@ export class ObjectType extends Type {
     } }`;
   }
 
-  static multyLine(properties: Array<[string, Type]>, isSoft: boolean) {
+  static multyLine(properties: Array<[string | TypeVar, Type]>, isSoft: boolean) {
     return `{\n${properties
       .map(
         ([name, type]) =>
-          `\t${name}: ${String(
+          `\t${this.getPropertyString(name)}: ${String(
             Type.getTypeRoot(type instanceof VariableInfo ? type.type : type)
               .name
           ).replace(/\n/g, "\n\t")}`
@@ -98,8 +101,12 @@ export class ObjectType extends Type {
     }}`;
   }
 
+  static getPropertyString(propertyKey: string | TypeVar) {
+    return typeof propertyKey === "string" ? `'${propertyKey}'` : String(propertyKey.name);
+  }
+
   isNominal: boolean;
-  properties: Map<string, VariableInfo<Type>>;
+  properties: Map<string | TypeVar, VariableInfo<Type>>;
   instanceType: Type | null = null;
   classType: Type | null = null;
   isStrict: boolean = true;
@@ -109,7 +116,7 @@ export class ObjectType extends Type {
   constructor(
     name: ?string,
     options: ExtendedTypeMeta = {},
-    properties: Array<[string, VariableInfo<Type>]>
+    properties: Array<[string | TypeVar, VariableInfo<Type>]>
   ) {
     name =
       name == undefined
@@ -134,7 +141,9 @@ export class ObjectType extends Type {
     _: boolean = false,
     isForInit: boolean = false
   ): ?Type | ClassProperty | ObjectProperty | ClassMethod | ObjectMethod {
-    const propertyName = String(property);
+    const propertyName = property instanceof TypeVar || property.isSubtypeOf === Type.Symbol 
+      ? property 
+      : String(property);
     let fieldOwner = this;
     let field = undefined;
     while (fieldOwner) {
@@ -245,12 +254,30 @@ export class ObjectType extends Type {
           targetTypes,
           typeScope
         );
-        if (vInfo.type === newType) {
+        let newKey = key instanceof TypeVar
+          ? key.changeAll(sourceTypes, targetTypes, typeScope)
+          : key;
+          if (typeof newKey !== "string" && !(newKey instanceof TypeVar)) {
+            newKey = this.getOponentType(newKey);
+            if (
+                newKey.isSubtypeOf !== Type.String &&
+                newKey.isSubtypeOf !== Type.Symbol &&
+                newKey.isSubtypeOf !== Type.Number
+            ) {
+              throw new HegelError(`Computed property type should be String, Symbol or Number literal type, but given "${String(newKey.name)}"`);
+            }
+          }
+         if (newKey.isSubtypeOf === Type.String) {
+          newKey = String(newKey.name).slice(1, -1);
+         } else if (key.isSubtypeOf === Type.Number) {
+          newKey = String(newKey.name);
+         }
+        if (vInfo.type === newType && newKey === key) {
           return newProperties.push([key, vInfo]);
         }
         isAnyPropertyChanged = true;
         newProperties.push([
-          key,
+          newKey,
           new VariableInfo(newType, vInfo.parent, vInfo.meta)
         ]);
       });

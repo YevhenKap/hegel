@@ -93,7 +93,7 @@ export class GenericType<T: Type> extends Type {
   genericArguments: Array<TypeVar>;
   subordinateType: T;
   localTypeScope: TypeScope;
-  canBeNested: boolean = true;
+  nestedRestriction: Type | void;
 
   constructor(
     name: string,
@@ -106,12 +106,8 @@ export class GenericType<T: Type> extends Type {
     this.subordinateType = type;
     this.localTypeScope = typeScope;
     this.genericArguments = genericArguments.map(param => {
-      if (
-        param.constraint != undefined &&
-        "not" in param.constraint &&
-        TypeVar.isSelf(param.constraint.not)
-      ) {
-        this.canBeNested = false;
+      if (param.constraint != undefined && "unwrap" in param.constraint) {
+        this.nestedRestriction = param.constraint.unwrap;
         param.constraint = undefined;
       }
       return param;
@@ -283,14 +279,42 @@ export class GenericType<T: Type> extends Type {
     this.assertParameters(appliedParameters, loc);
     let isBottomPresented = false;
     let nestedInside = null;
+    let nestedTypesInsideUnion = [];
+    let isOtherPresented = false;
     const parameters: Array<Type> = this.genericArguments.map((t, i) => {
       let appliedType = appliedParameters[i];
-      if (
-        !this.canBeNested &&
-        nestedInside === null &&
-        this.subordinateType.isPrincipalTypeFor(appliedType)
-      ) {
-        nestedInside = appliedType;
+      if (this.nestedRestriction !== undefined) {
+        if (
+          appliedType instanceof UnionType &&
+          nestedTypesInsideUnion.length === 0
+        ) {
+          const [
+            nestedInsideUnion,
+            otherVariants
+          ] = appliedType.variants.reduce(
+            ([nested, other], type) =>
+              // $FlowIssue
+              this.nestedRestriction.isPrincipalTypeFor(type)
+                ? [[...nested, type], other]
+                : [nested, [...other, type]],
+            [[], []]
+          );
+          if (nestedInsideUnion.length !== 0) {
+            nestedTypesInsideUnion = nestedInsideUnion;
+            if (otherVariants.length !== 0) {
+              isOtherPresented = true;
+              // $FlowIssue
+              return UnionType.term(null, {}, otherVariants);
+            }
+            return Type.Undefined;
+          }
+        }
+        if (
+          nestedInside === null &&
+          this.nestedRestriction.isPrincipalTypeFor(appliedType)
+        ) {
+          nestedInside = appliedType;
+        }
       }
       if (appliedType instanceof $BottomType) {
         isBottomPresented = true;
@@ -317,7 +341,7 @@ export class GenericType<T: Type> extends Type {
       ) {
         return appliedType;
       }
-      if (t.constraint instanceof UnionType) {
+      if (t.constraint !== undefined && "oneOf" in t.constraint) {
         const variant = t.constraint.variants.find(v =>
           v.isPrincipalTypeFor(appliedType)
         );
@@ -329,6 +353,10 @@ export class GenericType<T: Type> extends Type {
     });
     if (nestedInside !== null) {
       return nestedInside;
+    }
+    if (nestedTypesInsideUnion.length !== 0 && !isOtherPresented) {
+      // $FlowIssue
+      return UnionType.term(null, {}, nestedTypesInsideUnion);
     }
     let appliedTypeName = this.getChangedName(
       this.genericArguments,
@@ -356,6 +384,15 @@ export class GenericType<T: Type> extends Type {
       undefined,
       true
     );
+    if (appliedTypeName.indexOf("magic") === 0) {
+      appliedSelf = TypeVar.new(
+        appliedTypeName,
+        { parent: theMostPriorityParent, isSubtypeOf: TypeVar.Self },
+        undefined,
+        undefined,
+        true
+      );
+    }
     if (
       !(appliedSelf instanceof TypeVar) &&
       !(appliedSelf instanceof $BottomType)
@@ -373,7 +410,11 @@ export class GenericType<T: Type> extends Type {
       );
     }
     if (isBottomPresented) {
-      return this.bottomizeWith(parameters, theMostPriorityParent, loc);
+      const result = this.bottomizeWith(parameters, theMostPriorityParent, loc);
+      return nestedTypesInsideUnion.length !== 0
+        // $FlowIssue
+        ? UnionType.term(null, {}, [...nestedTypesInsideUnion, result])
+        : result;
     }
     try {
       const result = this.subordinateType.changeAll(
@@ -384,7 +425,11 @@ export class GenericType<T: Type> extends Type {
       result.name = result.name === undefined ? appliedTypeName : result.name;
       appliedSelf.root = result;
       result.priority = this.subordinateType.priority + 1;
-      return result.save();
+      result.save();
+      return nestedTypesInsideUnion.length !== 0
+        // $FlowIssue
+        ? UnionType.term(null, {}, [...nestedTypesInsideUnion, result])
+        : result;
     } catch (e) {
       e.loc = loc;
       throw e;
@@ -456,12 +501,12 @@ export class GenericType<T: Type> extends Type {
     return this.genericArguments.includes(type);
   }
 
-  getNextParent(typeScope: TypeScope) {
+  getNextParent(_: TypeScope) {
     if (this._alreadyProcessedWith !== null || this.subordinateType == null) {
       return Type.GlobalTypeScope;
     }
     this._alreadyProcessedWith = this;
-    const result = this.subordinateType.getNextParent(typeScope);
+    const result = this.subordinateType.getNextParent(this.localTypeScope);
     this._alreadyProcessedWith = null;
     return result;
   }

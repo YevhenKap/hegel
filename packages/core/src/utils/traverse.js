@@ -179,10 +179,21 @@ function mixDeclarationsInideForBlock(currentNode: Node, parentNode: Node) {
   ) {
     return currentNode;
   }
-  const init = currentNode.init || {
-    ...currentNode.left,
-    init: getInitFor(currentNode)
-  };
+  let init;
+  if (currentNode.init != undefined) {
+    init = currentNode.init;
+  } else {
+    init = {
+      ...currentNode.left,
+      declarations: [
+        {
+          ...currentNode.left.declarations[0],
+          init: getInitFor(currentNode)
+        }
+      ]
+    };
+    currentNode.left = undefined;
+  }
   return {
     type: NODE.BLOCK_STATEMENT,
     body: [init, currentNode],
@@ -247,6 +258,149 @@ function mixParentToClassObjectAndFunction(
   ) {
     currentNode.parentNode = parentNode;
   }
+  return currentNode;
+}
+
+function copyLocOfNode(node) {
+  return { start: { ...node.loc.start }, end: { ...node.loc.end } };
+}
+
+function convertObjectSpreadIntoAssign(currentNode: Node) {
+  if (
+    currentNode.type !== NODE.OBJECT_EXPRESSION ||
+    !currentNode.properties.some(p => p.type === NODE.SPREAD_ELEMENT)
+  ) {
+    return currentNode;
+  }
+  const properties = currentNode.properties;
+  let lastObject;
+  let lastProperty;
+  const objects = [];
+  for (let i = 0; i < properties.length; i++) {
+    const property = properties[i];
+    if (property.type === NODE.SPREAD_ELEMENT) {
+      if (lastObject !== undefined) {
+        lastObject.loc.end = lastProperty.loc.end;
+      }
+      objects.push(property.argument);
+      lastObject = undefined;
+    } else {
+      if (lastObject === undefined) {
+        lastObject = {
+          ...currentNode,
+          loc: lastProperty === undefined 
+            ? copyLocOfNode(currentNode)
+            : { start: lastProperty.loc.end },
+          properties: [property]
+        };
+        objects.push(lastObject);
+      } else {
+        lastObject.properties.push(property);
+      }
+      lastProperty = property;
+    }
+  }
+  if (lastObject !== undefined && lastObject.properties.length !== 0) {
+    lastObject.loc.end = lastProperty.loc.end;
+  }
+  if (objects.length === 1) {
+    objects.unshift({ type: NODE.OBJECT_EXPRESSION, properties: [], loc: copyLocOfNode(currentNode) });
+  }
+  Object.assign(currentNode, {
+    type: NODE.CALL_EXPRESSION,
+    loc: currentNode.loc,
+    arguments: objects,
+    callee: {
+      type: NODE.MEMBER_EXPRESSION,
+      loc: currentNode.loc,
+      object: { type: NODE.IDENTIFIER, loc: currentNode.loc, name: "Object" },
+      property: { type: NODE.IDENTIFIER, loc: currentNode.loc, name: "assign" }
+    },
+    properties: undefined
+  });
+  return currentNode;
+}
+
+function convertArraySpreadIntoConcat(currentNode: Node) {
+  if (
+    currentNode.type !== NODE.ARRAY_EXPRESSION ||
+    !currentNode.elements.some(p => p.type === NODE.SPREAD_ELEMENT)
+  ) {
+    return currentNode;
+  }
+  const elements = currentNode.elements;
+  const arrays = [];
+  let lastArray;
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    if (element.type === NODE.SPREAD_ELEMENT) {
+      arrays.push({
+        type: NODE.CALL_EXPRESSION,
+        loc: currentNode.loc,
+        arguments: [element.argument],
+        callee: {
+          type: NODE.MEMBER_EXPRESSION,
+          loc: currentNode.loc,
+          object: {
+            type: NODE.IDENTIFIER,
+            loc: currentNode.loc,
+            name: "Array"
+          },
+          property: {
+            type: NODE.IDENTIFIER,
+            loc: currentNode.loc,
+            name: "from"
+          }
+        },
+        elements: undefined
+      });
+      lastArray = undefined;
+    } else {
+      if (lastArray === undefined) {
+        lastArray = {
+          ...currentNode,
+          elements: [element],
+          loc: currentNode.loc
+        };
+        arrays.push(lastArray);
+      } else {
+        lastArray.elements.push(element);
+      }
+    }
+  }
+  const callee =
+    arrays.length === 1
+      ? {
+          type: NODE.MEMBER_EXPRESSION,
+          loc: currentNode.loc,
+          object: {
+            type: NODE.IDENTIFIER,
+            loc: currentNode.loc,
+            name: "Array"
+          },
+          property: {
+            type: NODE.IDENTIFIER,
+            loc: currentNode.loc,
+            name: "from"
+          }
+        }
+      : {
+          type: NODE.MEMBER_EXPRESSION,
+          loc: currentNode.loc,
+          object: arrays.shift(),
+          property: {
+            type: NODE.IDENTIFIER,
+            loc: currentNode.loc,
+            name: "concat"
+          }
+        };
+  Object.assign(currentNode, {
+    type: NODE.CALL_EXPRESSION,
+    loc: currentNode.loc,
+    arguments: arrays,
+    callee,
+    elements: undefined
+  });
   return currentNode;
 }
 
@@ -351,7 +505,9 @@ const getCurrentNode = compose(
   mixBlockToConditionalExpression,
   mixBlockToCaseStatement,
   mixParentToClassObjectAndFunction,
-  sortClassMembers
+  sortClassMembers,
+  convertObjectSpreadIntoAssign,
+  convertArraySpreadIntoConcat
 );
 
 export type Handler = (
@@ -410,12 +566,14 @@ function traverseTree(
         throw e;
       }
       if (i < body.length - 1) {
-        meta.errors.push(new HegelError("Unreachable code after this line", e.loc));
+        meta.errors.push(
+          new HegelError("Unreachable code after this line", e.loc)
+        );
         return;
       }
     }
     post(currentNode, parentNode, pre, middle, post, newMeta);
-  } catch(e) {
+  } catch (e) {
     if (e instanceof Error && !(e instanceof HegelError)) {
       throw e;
     }

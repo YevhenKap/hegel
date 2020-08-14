@@ -9,6 +9,7 @@ import { GenericType } from "../src/type-graph/types/generic-type";
 import { FunctionType } from "../src/type-graph/types/function-type";
 import { $Refinemented } from "../src/type-graph/types/refinemented-type";
 import { CollectionType } from "../src/type-graph/types/collection-type";
+import { $AppliedStrictUnion } from "../src/type-graph/types/strict-union-type";
 import { prepareAST, getModuleAST, mixTypeDefinitions } from "./preparation";
 
 describe("Simple inference for module variables by literal", () => {
@@ -228,7 +229,7 @@ describe("Simple inference for module variables by literal", () => {
     const b = actual.body.get("b").type;
     expect(errors.length).toBe(0);
     expect(a).toBeInstanceOf(ObjectType);
-    expect(a === Type.find("{ a: number }")).toBe(true);
+    expect(a === Type.find("{ 'a': number }")).toBe(true);
     expect(a.properties.get("a").type === Type.Number).toBe(true);
     expect(b === Type.Number).toBe(true);
   });
@@ -449,14 +450,14 @@ describe("Simple inference for module variables by function return", () => {
     const getA = actual.body.get("getA");
     expect(errors.length).toBe(0);
     expect(getA.type).toBeInstanceOf(FunctionType);
-    expect(getA.type === Type.find("() => { a: number }")).toBe(true);
+    expect(getA.type === Type.find("() => { 'a': number }")).toBe(true);
     expect(getA.type.argumentsTypes.length).toBe(0);
     expect(getA.type.returnType).toBeInstanceOf(ObjectType);
     expect(getA.type.returnType.properties.size).toBe(1);
     expect(getA.type.returnType.properties.get("a").type === Type.Number).toBe(
       true
     );
-    expect(getA.type.returnType === Type.find("{ a: number }")).toBe(true);
+    expect(getA.type.returnType === Type.find("{ 'a': number }")).toBe(true);
     expect(a.type === getA.type.returnType).toBe(true);
   });
   test("Inference global module variable with alias type", async () => {
@@ -477,14 +478,14 @@ describe("Simple inference for module variables by function return", () => {
     const getA = actual.body.get("getA");
     expect(errors.length).toBe(0);
     expect(getA.type).toBeInstanceOf(FunctionType);
-    expect(getA.type === Type.find("() => { a: number }")).toBe(true);
+    expect(getA.type === Type.find("() => { 'a': number }")).toBe(true);
     expect(getA.type.argumentsTypes.length).toBe(0);
     expect(getA.type.returnType).toBeInstanceOf(ObjectType);
     expect(getA.type.returnType.properties.size).toBe(1);
     expect(getA.type.returnType.properties.get("a").type === Type.Number).toBe(
       true
     );
-    expect(getA.type.returnType === Type.find("{ a: number }")).toBe(true);
+    expect(getA.type.returnType === Type.find("{ 'a': number }")).toBe(true);
     expect(a.type === getA.type.returnType).toBe(true);
   });
   test("Inference global module variable with generic alias type", async () => {
@@ -659,10 +660,10 @@ describe("Simple inference for module functions", () => {
     expect(mul.type.subordinateType.argumentsTypes[0]).toBeInstanceOf(TypeVar);
     expect(
       mul.type.subordinateType.argumentsTypes[0].constraint
-    ).toBeInstanceOf(UnionType);
+    ).toBeInstanceOf($AppliedStrictUnion);
     expect(
       mul.type.subordinateType.argumentsTypes[0].constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(
       mul.type.subordinateType.argumentsTypes[0].constraint.variants.length
@@ -678,10 +679,10 @@ describe("Simple inference for module functions", () => {
     expect(mul.type.subordinateType.argumentsTypes[1]).toBeInstanceOf(TypeVar);
     expect(
       mul.type.subordinateType.argumentsTypes[1].constraint
-    ).toBeInstanceOf(UnionType);
+    ).toBeInstanceOf($AppliedStrictUnion);
     expect(
       mul.type.subordinateType.argumentsTypes[1].constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(
       mul.type.subordinateType.argumentsTypes[1].constraint.variants.length
@@ -696,11 +697,11 @@ describe("Simple inference for module functions", () => {
     ).toBe(true);
     expect(mul.type.subordinateType.returnType).toBeInstanceOf(TypeVar);
     expect(mul.type.subordinateType.returnType.constraint).toBeInstanceOf(
-      UnionType
+      $AppliedStrictUnion
     );
     expect(
       mul.type.subordinateType.returnType.constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(mul.type.subordinateType.returnType.constraint.variants.length).toBe(
       2
@@ -1529,10 +1530,10 @@ describe("Simple inference for module functions", () => {
     expect(res.type.subordinateType.argumentsTypes[0]).toBeInstanceOf(TypeVar);
     expect(
       res.type.subordinateType.argumentsTypes[0].constraint
-    ).toBeInstanceOf(UnionType);
+    ).toBeInstanceOf($AppliedStrictUnion);
     expect(
       res.type.subordinateType.argumentsTypes[0].constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(
       res.type.subordinateType.argumentsTypes[0].constraint.variants.length
@@ -1548,10 +1549,10 @@ describe("Simple inference for module functions", () => {
     expect(res.type.subordinateType.argumentsTypes[1]).toBeInstanceOf(TypeVar);
     expect(
       res.type.subordinateType.argumentsTypes[1].constraint
-    ).toBeInstanceOf(UnionType);
+    ).toBeInstanceOf($AppliedStrictUnion);
     expect(
       res.type.subordinateType.argumentsTypes[1].constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(
       res.type.subordinateType.argumentsTypes[1].constraint.variants.length
@@ -1566,11 +1567,11 @@ describe("Simple inference for module functions", () => {
     ).toBe(true);
     expect(res.type.subordinateType.returnType).toBeInstanceOf(TypeVar);
     expect(res.type.subordinateType.returnType.constraint).toBeInstanceOf(
-      UnionType
+      $AppliedStrictUnion
     );
     expect(
       res.type.subordinateType.returnType.constraint ===
-        Type.find("bigint | number")
+        Type.find("$StrictUnion<bigint | number>")
     ).toBe(true);
     expect(res.type.subordinateType.returnType.constraint.variants.length).toBe(
       2
@@ -1610,7 +1611,7 @@ describe("Object type inference", () => {
     expect(
       a.type ===
         Type.find(
-          "{ 1: number, 2: bigint, 3: string, 4: boolean, 5: symbol, 6: null, 7: undefined, 8: RegExp }"
+          "{ '1': number, '2': bigint, '3': string, '4': boolean, '5': symbol, '6': null, '7': undefined, '8': RegExp }"
         )
     ).toBe(true);
     expect(a.type.properties.get("1").type === Type.Number).toBe(true);
@@ -1638,7 +1639,7 @@ describe("Object type inference", () => {
     expect(
       a.type ===
         Type.find(
-          "{ a: () => number, b: <_a>(_a) => undefined, c: <_b>(_b) => _b }"
+          "{ 'a': () => number, 'b': <_a>(_a) => undefined, 'c': <_b>(_b) => _b }"
         )
     ).toBe(true);
     expect(a.type.properties.get("a").type).toBeInstanceOf(FunctionType);
@@ -1688,11 +1689,11 @@ describe("Object type inference", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(ObjectType);
     expect(a.type.properties.size).toBe(1);
-    expect(a.type === Type.find("{ b: { c: () => number } }")).toBe(true);
+    expect(a.type === Type.find("{ 'b': { 'c': () => number } }")).toBe(true);
     expect(a.type.properties.get("b").type).toBeInstanceOf(ObjectType);
     expect(a.type.properties.get("b").type.properties.size).toBe(1);
     expect(
-      a.type.properties.get("b").type === Type.find("{ c: () => number }")
+      a.type.properties.get("b").type === Type.find("{ 'c': () => number }")
     ).toBe(true);
     expect(
       a.type.properties.get("b").type.properties.get("c").type
@@ -1783,9 +1784,9 @@ describe("Error inference", () => {
     expect(errors.length).toBe(0);
     expect(e.type).toBeInstanceOf(UnionType);
     expect(e.type.variants.length).toBe(2);
-    expect(e.type.variants[0] === Type.find("{ message: string }")).toBe(true);
+    expect(e.type.variants[0] === Type.find("{ 'message': string }")).toBe(true);
     expect(e.type.variants[1] === Type.Unknown).toBe(true);
-    expect(e.type === Type.find("{ message: string } | unknown")).toBe(true);
+    expect(e.type === Type.find("{ 'message': string } | unknown")).toBe(true);
   });
   test("Inference simple throw with anonymous function type", async () => {
     const sourceAST = prepareAST(`
@@ -2384,12 +2385,12 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ a: number } | number")).toBe(true);
+    expect(a.type === Type.find("{ 'a': number } | number")).toBe(true);
     expect(a.type.variants.length).toBe(2);
     expect(a.type.variants[0]).toBeInstanceOf(ObjectType);
-    expect(a.type.variants[0] === Type.find("{ a: number }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'a': number }")).toBe(true);
     expect(a.type.variants[1] === Type.Number).toBe(true);
-    expect(b.type === Type.find("{ a: number }")).toBe(true);
+    expect(b.type === Type.find("{ 'a': number }")).toBe(true);
   });
   test("Typeof refinement for union variable(null)", async () => {
     const sourceAST = prepareAST(`
@@ -2443,14 +2444,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: number, c: number } | { b: string }")
+      a.type === Type.find("{ 'b': number, 'c': number } | { 'b': string }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: number, c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': number, 'c': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ b: string }")).toBe(true);
-    expect(b.type === Type.find("{ b: number, c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': number, 'c': number }")).toBe(true);
   });
   test("Equals refinement for union property(number)", async () => {
     const sourceAST = prepareAST(`
@@ -2465,13 +2466,13 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: 2, c: number } | { b: string }")).toBe(
+    expect(a.type === Type.find("{ 'b': 2, 'c': number } | { 'b': string }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: 2, c: number }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: string }")).toBe(true);
-    expect(b.type === Type.find("{ b: 2, c: number }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'b': 2, 'c': number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': 2, 'c': number }")).toBe(true);
   });
   test("Equals refinement for union property(number)", async () => {
     const sourceAST = prepareAST(`
@@ -2487,14 +2488,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: number, c: number } | { b: string }")
+      a.type === Type.find("{ 'b': number, 'c': number } | { 'b': string }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: number, c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': number, 'c': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ b: string }")).toBe(true);
-    expect(b.type === Type.find("{ b: 2, c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': 2, 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union property(string)", async () => {
     const sourceAST = prepareAST(`
@@ -2510,14 +2511,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: number } | { b: string, c: number }")
+      a.type === Type.find("{ 'b': number } | { 'b': string, 'c': number }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: number }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: string, c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string, 'c': number }")).toBe(
       true
     );
-    expect(b.type === Type.find("{ b: string, c: number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': string, 'c': number }")).toBe(true);
   });
   test("Equals refinement for union property(string)", async () => {
     const sourceAST = prepareAST(`
@@ -2532,15 +2533,15 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: '2', c: number } | { b: number }")).toBe(
+    expect(a.type === Type.find("{ 'b': '2', 'c': number } | { 'b': number }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: '2', c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': '2', 'c': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: '2', c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': '2', 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union variable(boolean)", async () => {
     const sourceAST = prepareAST(`
@@ -2556,14 +2557,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: boolean, c: number } | { b: number }")
+      a.type === Type.find("{ 'b': boolean, 'c': number } | { 'b': number }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: boolean, c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': boolean, 'c': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: boolean, c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': boolean, 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union property(number literal)", async () => {
     const sourceAST = prepareAST(`
@@ -2578,13 +2579,13 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: 2, c: number } | { b: string }")).toBe(
+    expect(a.type === Type.find("{ 'b': 2, 'c': number } | { 'b': string }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: 2, c: number }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: string }")).toBe(true);
-    expect(b.type === Type.find("{ b: 2, c: number }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'b': 2, 'c': number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': 2, 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union property(string literal)", async () => {
     const sourceAST = prepareAST(`
@@ -2599,15 +2600,15 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: '2', c: number } | { b: number }")).toBe(
+    expect(a.type === Type.find("{ 'b': '2', 'c': number } | { 'b': number }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: '2', c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': '2', 'c': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: '2', c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': '2', 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union property(boolean literal)", async () => {
     const sourceAST = prepareAST(`
@@ -2622,15 +2623,15 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: string } | { b: true, c: number }")).toBe(
+    expect(a.type === Type.find("{ 'b': string } | { 'b': true, 'c': number }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: string }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: true, c: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'b': string }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': true, 'c': number }")).toBe(
       true
     );
-    expect(b.type === Type.find("{ b: true, c: number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': true, 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union variable(object)", async () => {
     const sourceAST = prepareAST(`
@@ -2646,14 +2647,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: { d: number }, c: number } | { b: number }")
+      a.type === Type.find("{ 'b': { 'd': number }, 'c': number } | { 'b': number }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
     expect(
-      a.type.variants[0] === Type.find("{ b: { d: number }, c: number }")
+      a.type.variants[0] === Type.find("{ 'b': { 'd': number }, 'c': number }")
     ).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: { d: number }, c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': { 'd': number }, 'c': number }")).toBe(true);
   });
   test("Typeof refinement for union property(function)", async () => {
     const sourceAST = prepareAST(`
@@ -2669,14 +2670,14 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ b: () => number, c: number } | { b: number }")
+      a.type === Type.find("{ 'b': () => number, 'c': number } | { 'b': number }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
     expect(
-      a.type.variants[0] === Type.find("{ b: () => number, c: number }")
+      a.type.variants[0] === Type.find("{ 'b': () => number, 'c': number }")
     ).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: () => number, c: number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': () => number, 'c': number }")).toBe(true);
   });
   test("Multiple typeof refinement for union variable", async () => {
     const sourceAST = prepareAST(`
@@ -2715,18 +2716,18 @@ describe("Type refinement", () => {
     expect(
       a.type ===
         Type.find(
-          "{ a: number, b: number } | { a: number, b: string } | { a: string }"
+          "{ 'a': number, 'b': number } | { 'a': number, 'b': string } | { 'a': string }"
         )
     ).toBe(true);
     expect(a.type.variants.length).toBe(3);
-    expect(a.type.variants[0] === Type.find("{ a: number, b: number }")).toBe(
+    expect(a.type.variants[0] === Type.find("{ 'a': number, 'b': number }")).toBe(
       true
     );
-    expect(a.type.variants[1] === Type.find("{ a: number, b: string }")).toBe(
+    expect(a.type.variants[1] === Type.find("{ 'a': number, 'b': string }")).toBe(
       true
     );
-    expect(a.type.variants[2] === Type.find("{ a: string }")).toBe(true);
-    expect(b.type === Type.find("{ a: number, b: number }")).toBe(true);
+    expect(a.type.variants[2] === Type.find("{ 'a': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'a': number, 'b': number }")).toBe(true);
   });
   test("After throw inside refinement", async () => {
     const sourceAST = prepareAST(`
@@ -2810,14 +2811,14 @@ describe("Type refinement", () => {
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
       a.type ===
-        Type.find("{ a: { b: number } } | { a: { b: string }, b: string }")
+        Type.find("{ 'a': { 'b': number } } | { 'a': { 'b': string }, 'b': string }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ a: { b: number } }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'a': { 'b': number } }")).toBe(true);
     expect(
-      a.type.variants[1] === Type.find("{ a: { b: string }, b: string }")
+      a.type.variants[1] === Type.find("{ 'a': { 'b': string }, 'b': string }")
     ).toBe(true);
-    expect(b.type === Type.find("{ a: { b: number } }")).toBe(true);
+    expect(b.type === Type.find("{ 'a': { 'b': number } }")).toBe(true);
   });
   test("Useless typeof", async () => {
     const sourceAST = prepareAST(`
@@ -2887,13 +2888,13 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ b: Array<number> } | { b: number }")).toBe(
+    expect(a.type === Type.find("{ 'b': Array<number> } | { 'b': number }")).toBe(
       true
     );
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ b: Array<number> }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: number }")).toBe(true);
-    expect(b.type === Type.find("{ b: Array<number> }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'b': Array<number> }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': number }")).toBe(true);
+    expect(b.type === Type.find("{ 'b': Array<number> }")).toBe(true);
   });
   test("In refinement for union variable", async () => {
     const sourceAST = prepareAST(`
@@ -2908,11 +2909,11 @@ describe("Type refinement", () => {
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
-    expect(a.type === Type.find("{ a: number } | { b: string }")).toBe(true);
+    expect(a.type === Type.find("{ 'a': number } | { 'b': string }")).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ a: number }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ b: string }")).toBe(true);
-    expect(b.type === Type.find("{ a: number }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'a': number }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'b': string }")).toBe(true);
+    expect(b.type === Type.find("{ 'a': number }")).toBe(true);
   });
   test("In refinement for union property", async () => {
     const sourceAST = prepareAST(`
@@ -2926,11 +2927,11 @@ describe("Type refinement", () => {
     const a = actual.body.get("a");
     const b = actualScope.body.get("b");
     expect(errors.length).toBe(0);
-    expect(a.type === Type.find("{ a: { b: string } | { c: string } }")).toBe(
+    expect(a.type === Type.find("{ 'a': { 'b': string } | { 'c': string } }")).toBe(
       true
     );
     expect(b.type).toBeInstanceOf($Refinemented);
-    expect(b.type.refinemented === Type.find("{ a: { b: string } }")).toBe(
+    expect(b.type.refinemented === Type.find("{ 'a': { 'b': string } }")).toBe(
       true
     );
   });
@@ -2948,12 +2949,12 @@ describe("Type refinement", () => {
     expect(errors.length).toBe(0);
     expect(a.type).toBeInstanceOf(UnionType);
     expect(
-      a.type === Type.find("{ a: { b: string } } | { a: { c: string } }")
+      a.type === Type.find("{ 'a': { 'b': string } } | { 'a': { 'c': string } }")
     ).toBe(true);
     expect(a.type.variants.length).toBe(2);
-    expect(a.type.variants[0] === Type.find("{ a: { b: string } }")).toBe(true);
-    expect(a.type.variants[1] === Type.find("{ a: { c: string } }")).toBe(true);
-    expect(b.type === Type.find("{ a: { b: string } }")).toBe(true);
+    expect(a.type.variants[0] === Type.find("{ 'a': { 'b': string } }")).toBe(true);
+    expect(a.type.variants[1] === Type.find("{ 'a': { 'c': string } }")).toBe(true);
+    expect(b.type === Type.find("{ 'a': { 'b': string } }")).toBe(true);
   });
 });
 describe("Other", () => {
@@ -3127,7 +3128,7 @@ describe("Other", () => {
     expect(
       fn.type ===
         Type.find(
-          "<_a: { a: T, b: T, ... }, T: bigint | number | string>(_a) => T"
+          "<_a: { 'a': T, 'b': T, ... }, T: $StrictUnion<bigint | number | string>>(_a) => T"
         )
     ).toBe(true);
     expect(res.type === Type.Number).toBe(true);
@@ -3337,5 +3338,42 @@ describe("Issues", () => {
     const test = module.body.get("test");
     expect(errors.length).toBe(0);
     expect(test.type.returnType === Type.String).toBe(true);
+  });
+
+  test("Issue #229: should inference operators as strict union", async () => {
+    const sourceAST = prepareAST(`
+      let f = (a, b) => a + b
+
+      const a: number | bigint = 1;
+      const b: number | bigint = 1n;
+
+      const x = f(a, b);
+    `);
+    const [, errors] = await createTypeGraph(
+      [sourceAST],
+      getModuleAST,
+      false,
+      mixTypeDefinitions()
+    );
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toBeInstanceOf(HegelError);
+    expect(errors[0].message).toBe('Parameter "bigint | number" is incompatible with restriction "$StrictUnion<bigint | number | string>"');
+    expect(errors[0].loc).toEqual({ end: { column: 23, line: 7 }, start: { column: 16, line: 7 } });
+  });
+
+  test("Issue #229: should have not to swap strict union to raw union", async () => {
+    const sourceAST = prepareAST(`
+      let f = <T: number | string>(a: T, b: T) => a + b
+    `);
+    const [, errors] = await createTypeGraph(
+      [sourceAST],
+      getModuleAST,
+      false,
+      mixTypeDefinitions()
+    );
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toBeInstanceOf(HegelError);
+    expect(errors[0].message).toBe('Parameter "T" is incompatible with restriction "$StrictUnion<bigint | number | string>"');
+    expect(errors[0].loc).toEqual({ end: { column: 55, line: 2 }, start: { column: 50, line: 2 } });
   });
 });

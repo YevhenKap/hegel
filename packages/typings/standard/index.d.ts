@@ -113,24 +113,30 @@ declare function escape(string: string): string;
 //   */
 declare function unescape(string: string): string;
 
-interface Symbol {
-  //   /** Returns a string representation of an object. */
-  toString(): string;
-
-  //   /** Returns the primitive value of the specified object. */
-  valueOf(): symbol;
-}
+// Used as special type
+//interface Symbol {
+//  //   /** Returns a string representation of an object. */
+//  toString(): string;
+//
+//  //   /** Returns the primitive value of the specified object. */
+//  valueOf(): symbol;
+//}
 
 interface SymbolConstructor {
-  readonly prototype: symbol;
-  readonly iterator: symbol;
-  readonly asyncIterator: symbol;
+  readonly prototype: Symbol<"prototype">;
+  readonly iterator: Symbol<"iterator">;
+  readonly asyncIterator: Symbol<"asyncIterator">;
 
-  (description?: string | number): symbol;
 
-  for(key: string): symbol;
+  // WARRNING: THE METHOD IS CHANGED in @hegel/core/src/type-graph/types/symbol-literal-type.js:75.
+  // We need it to generate randomly postfixed symbol
+  //  <T extends string = "">(description?: T): Symbol<T>;
 
-  keyFor(sym: symbol): string | undefined;
+  // WARRNING: THE METHOD IS CHANGED in @hegel/core/src/type-graph/types/symbol-literal-type.js:75.
+  // We need it to generate randomly postfixed symbol
+  //  for<T extends string>(key: T): Symbol<T>;
+
+  keyFor<T extends string | undefined = string | undefined>(sym: Symbol<T> | symbol): T;
 }
 
 declare var Symbol: SymbolConstructor;
@@ -343,19 +349,19 @@ interface Array<T> {
   ): U | $Throws<TypeError>;
 
   /** Iterator */
-  //[Symbol.iterator](): IterableIterator<T>;
+  [Symbol.iterator](): IterableIterator<T>;
   /**
    * Returns an iterable of key, value pairs for every entry in the array
    */
-  // entries(): IterableIterator<[number, T]>;
+  entries(): IterableIterator<[number, T]>;
   /**
    * Returns an iterable of keys in the array
    */
-  // keys(): IterableIterator<number>;
+  keys(): IterableIterator<number>;
   /**
    * Returns an iterable of values in the array
    */
-  // values(): IterableIterator<T>;
+  values(): IterableIterator<T>;
 
   [n: number]: T;
 }
@@ -495,6 +501,8 @@ interface ReadonlyArray<T> {
   //       * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
   //       */
 
+  [Symbol.iterator](): IterableIterator<T>;
+  
   readonly [n: number]: T;
 }
 
@@ -512,7 +520,7 @@ type IteratorResult<T, TReturn> =
   | IteratorYieldResult<T>
   | IteratorReturnResult<TReturn>;
 
-interface Iterator<T, TReturn, TNext> {
+interface Iterator<T, TReturn = any, TNext = any> {
   // NOTE: 'next' is defined using a tuple to ensure we report the correct assignability errors in all places.
   next(...args: [] | [TNext]): IteratorResult<T, TReturn>;
   return?(value?: TReturn): IteratorResult<T, TReturn>;
@@ -520,11 +528,11 @@ interface Iterator<T, TReturn, TNext> {
 }
 
 interface Iterable<T> {
-  //[Symbol.iterator](): Iterator<T>;
+  [Symbol.iterator](): Iterator<T>;
 }
 
-interface IterableIterator<T> extends Iterator<T, any, any> {
-  //[Symbol.iterator](): IterableIterator<T>;
+interface IterableIterator<T> extends Iterator<T> {
+  [Symbol.iterator](): IterableIterator<T>;
 }
 
 interface RegExpExecArray extends Array<string> {
@@ -1005,7 +1013,7 @@ interface String {
   //     /** Returns the primitive value of the specified object. */
   valueOf(): string;
 
-  //[Symbol.iterator](): IterableIterator<string>;
+  [Symbol.iterator](): IterableIterator<string>;
 
   /** Removes whitespace from the left end of a string. */
   trimLeft(): string;
@@ -1665,8 +1673,11 @@ interface TypedPropertyDescriptor<T> {
 }
 
 // declare type PromiseConstructorLike = new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void) => PromiseLike<T>;
+interface Thenable<T extends $Unwrap<this>> {
+  then<TResult1>(fn: (val: T) => TResult1): unknown;
+}
 
-interface PromiseLike<T extends $Not<this>> {
+interface PromiseLike<T extends $Unwrap<Thenable<unknown>>> {
   //     /**
   //      * Attaches callbacks for the resolution and/or rejection of the Promise.
   //      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1682,7 +1693,7 @@ interface PromiseLike<T extends $Not<this>> {
 // /**
 //  * Represents the completion of an asynchronous operation
 //  */
-interface Promise<T extends $Not<this>> {
+interface Promise<T extends $Unwrap<Thenable<unknown>>> {
   //     /**
   //      * Attaches callbacks for the resolution and/or rejection of the Promise.
   //      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2353,7 +2364,8 @@ interface Int8Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  //[Symbol.iterator](): IterableIterator<number>;
+
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -2690,7 +2702,8 @@ interface Uint8Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  // [Symbol.iterator](): IterableIterator<number>;
+  
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -3052,7 +3065,8 @@ interface Uint8ClampedArray {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  // [Symbol.iterator](): IterableIterator<number>;
+
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -3392,7 +3406,7 @@ interface Int16Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  // [Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -3723,7 +3737,7 @@ interface Uint16Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  //[Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -4051,7 +4065,7 @@ interface Int32Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  // [Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -4379,7 +4393,7 @@ interface Uint32Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  //[Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -4707,7 +4721,7 @@ interface Float32Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  //  [Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -5043,7 +5057,7 @@ interface Float64Array {
   //       * Returns a string representation of an array.
   //       */
   toString(): string;
-  //[Symbol.iterator](): IterableIterator<number>;
+  [Symbol.iterator](): IterableIterator<number>;
   /**
    * Returns an array of key, value pairs for every entry in the array
    */
@@ -5144,7 +5158,7 @@ interface Map<K, V> {
   set(key: K, value: V): Map<K, V>;
   readonly size: number;
   /** Returns an iterable of entries in the map. */
-  //[Symbol.iterator](): IterableIterator<[K, V]>;
+  [Symbol.iterator](): IterableIterator<[K, V]>;
   /**
    * Returns an iterable of key, value pairs for every entry in the map.
    */
@@ -5204,7 +5218,7 @@ interface Set<T> {
   has(value: T): boolean;
   readonly size: number;
   /** Iterates over values in the set. */
-  //[Symbol.iterator](): IterableIterator<T>;
+  [Symbol.iterator](): IterableIterator<T>;
   /**
    * Returns an iterable of [v,v] pairs for every value `v` in the set.
    */
@@ -5221,7 +5235,7 @@ interface Set<T> {
 
 interface ReadonlySet<T> {
   /** Iterates over values in the set. */
-  //    [Symbol.iterator](): IterableIterator<T>;
+  [Symbol.iterator](): IterableIterator<T>;
 }
 
 interface SetConstructor {

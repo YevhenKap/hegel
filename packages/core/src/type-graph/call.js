@@ -7,12 +7,12 @@ import { $Keys } from "./types/keys-type";
 import { $Values } from "./types/values-type";
 import { TypeVar } from "./types/type-var";
 import { CallMeta } from "./meta/call-meta";
+import { TupleType } from "./types/tuple-type";
 import { TypeScope } from "./type-scope";
 import { UnionType } from "./types/union-type";
 import { ObjectType } from "./types/object-type";
 import { GenericType } from "./types/generic-type";
 import { $BottomType } from "./types/bottom-type";
-import { FunctionType } from "./types/function-type";
 import { VariableInfo } from "./variable-info";
 import { $PropertyType } from "./types/property-type";
 import { VariableScope } from "./variable-scope";
@@ -24,6 +24,7 @@ import { $AppliedImmutable } from "./types/immutable-type";
 import { inferenceTypeForNode } from "../inference";
 import { pickFalsy, pickTruthy } from "../utils/type-utils";
 import { addFunctionToTypeGraph } from "../utils/function-utils";
+import { FunctionType, RestArgument } from "./types/function-type";
 import { getVariableType, getPropertyName } from "../utils/variable-utils";
 import { ModuleScope, PositionedModuleScope } from "./module-scope";
 import { addToThrowable, findThrowableBlock } from "../utils/throwable";
@@ -32,7 +33,11 @@ import {
   getRawFunctionType,
   getInvocationType
 } from "../inference/function-type";
-import { getWrapperType, getTypeFromTypeAnnotation } from "../utils/type-utils";
+import { 
+  getWrapperType,
+  getIteratorValueType,
+  getTypeFromTypeAnnotation
+} from "../utils/type-utils";
 import {
   getParentForNode,
   findNearestTypeScope,
@@ -58,7 +63,8 @@ type CallableMeta = {
   isForAssign?: boolean,
   isForInit?: boolean,
   isTypeDefinitions?: boolean,
-  isImmutable?: boolean
+  isImmutable?: boolean,
+  skipAddingCalls?: boolean
 };
 
 export function addCallToTypeGraph(
@@ -231,7 +237,19 @@ export function addCallToTypeGraph(
         selfObject instanceof $BottomType
           ? selfObject.subordinateMagicType.subordinateType
           : selfObject;
-      const _propertyName = getPropertyName(node);
+      const _propertyName = getPropertyName(
+        node,
+        node => addCallToTypeGraph(
+              node,
+              moduleScope,
+              currentScope,
+              parentNode,
+              pre,
+              middle,
+              post,
+              {...meta, skipAddingCalls: true }
+        )
+      );
       const propertyType = selfObject.properties.get(_propertyName);
       if (propertyType === undefined) {
         throw new Error("Never!!!");
@@ -596,17 +614,20 @@ export function addCallToTypeGraph(
         meta
       ).result;
       args = [target];
-      targetName = "Object.values";
-      args = args.map(a => (a instanceof VariableInfo ? a.type : a));
-      const isArray = args[0] instanceof CollectionType;
-      target = new $Values().applyGeneric(args, node.loc);
-      target =
-        isArray && node.type === NODE.VALUE
-          ? UnionType.term(null, {}, [target, Type.Undefined])
-          : target;
-      // $FlowIssue
-      target = new FunctionType(targetName, {}, args, target);
-      break;
+      const maybeIterableType = target instanceof VariableInfo ? target.type : target;
+      const CommonIterable = ObjectType.Iterable.root.applyGeneric([Type.Unknown]);
+      const CommonIterator = ObjectType.Iterator.root.applyGeneric([Type.Unknown]);
+      const isIterable = CommonIterable.isPrincipalTypeFor(maybeIterableType);
+      const isIterator = CommonIterator.isPrincipalTypeFor(maybeIterableType);
+      if (isIterable || isIterator) {
+        return {
+          result: getIteratorValueType(maybeIterableType, isIterable)
+        };
+      }
+      throw new HegelError(
+        `Type '${String(maybeIterableType.name)}' must have a '[Symbol.iterator]()' method that returns an iterator.`,
+        node.of.loc
+      );
     case NODE.MEMBER_EXPRESSION:
       const propertyName =
         node.property.type === NODE.PRIVATE_NAME
@@ -880,32 +901,67 @@ export function addCallToTypeGraph(
           node.loc
         );
       }
+      const providedArgumentsLength = node.arguments.length;
       args = node.arguments.map((n, i) => {
         argsLocations.push(n.loc);
         // $FlowIssue
         const defaultArg = (fnType.argumentsTypes || [])[i];
-        return n.type === NODE.FUNCTION_EXPRESSION ||
-          n.type === NODE.ARROW_FUNCTION_EXPRESSION
-          ? defaultArg
-          : addCallToTypeGraph(
-              n,
-              moduleScope,
-              currentScope,
-              parentNode,
-              pre,
-              middle,
-              post,
-              { ...meta, isImmutable: defaultArg instanceof $AppliedImmutable }
-            ).result;
+        if (n.type === NODE.FUNCTION_EXPRESSION || n.type === NODE.ARROW_FUNCTION_EXPRESSION) {
+          return defaultArg;
+        }
+        const isSpreadElement = n.type === NODE.SPREAD_ELEMENT;
+        if (isSpreadElement) {
+          n = n.argument;
+        } 
+        const { result } = addCallToTypeGraph(
+          n,
+          moduleScope,
+          currentScope,
+          parentNode,
+          pre,
+          middle,
+          post,
+          { ...meta, isImmutable: defaultArg instanceof $AppliedImmutable }
+        );
+        if (isSpreadElement) {
+          let resultType = result instanceof VariableInfo ? result.type : result;
+          resultType = resultType.getOponentType(resultType);
+          if (resultType instanceof TupleType) {
+            return resultType.items; 
+          }
+          const length = fnType.argumentsTypes.length - i;
+          const restOfArguments = Array.from({ length });
+          if (resultType instanceof CollectionType) {
+            return restOfArguments.fill(
+              defaultArg instanceof RestArgument 
+                ? resultType.valueType
+                : UnionType.term(null, {}, [Type.Undefined, resultType.valueType])
+            );
+          }
+          const CommonIterable = ObjectType.Iterable.root.applyGeneric([Type.Unknown]);
+          const CommonIterator = ObjectType.Iterator.root.applyGeneric([Type.Unknown]);
+          const isIterable = CommonIterable.isPrincipalTypeFor(resultType);
+          const isIterator = CommonIterator.isPrincipalTypeFor(resultType);
+          if (isIterable || isIterator) {
+              const element = getIteratorValueType(resultType, isIterable);
+              return restOfArguments.fill(UnionType.term(null, {}, [Type.Undefined, element]));
+          }
+          throw new HegelError(
+            `Type '${String(resultType.name)}' must have a '[Symbol.iterator]()' method that returns an iterator.`,
+            n.loc
+          );
+        }
+        return result;
       });
       targetType.asNotUserDefined();
-      args = node.arguments.map((n, i) => {
+      args = node.arguments.flatMap((n, i) => {
         if (
           n.type !== NODE.FUNCTION_EXPRESSION &&
           n.type !== NODE.ARROW_FUNCTION_EXPRESSION
         ) {
+          const element = args[i];
           // $FlowIssue
-          return args[i];
+          return element instanceof Array ? element : [element];
         }
         let expectedType =
           fnType instanceof FunctionType ? fnType.argumentsTypes[i] : undefined;
@@ -937,7 +993,7 @@ export function addCallToTypeGraph(
           middle,
           post
         );
-        return result;
+        return [result];
       });
       fnType = getRawFunctionType(
         // $FlowIssue
@@ -1072,26 +1128,42 @@ export function addCallToTypeGraph(
     inferenced = inferenced || localInferenced;
     return result;
   };
-  const invocationType =
+  const result =
     targetType instanceof UnionType
       ? UnionType.term(null, {}, targetType.variants.map(getResult))
       : getResult(targetType);
-  const callMeta = new CallMeta(
-    (target: any),
-    args,
-    node.loc,
-    targetName,
-    typeScope,
-    inferenced,
-    isFinal,
-    argsLocations
-  );
-  while (currentScope.skipCalls !== false && currentScope !== moduleScope) {
-    // $FlowIssue
-    currentScope = currentScope.parent;
+  if (!meta.skipAddingCalls) {
+    const callMeta = new CallMeta(
+      (target: any),
+      args,
+      node.loc,
+      targetName,
+      typeScope,
+      inferenced,
+      isFinal,
+      argsLocations
+    );
+    while (currentScope.skipCalls !== false && currentScope !== moduleScope) {
+      // $FlowIssue
+      currentScope = currentScope.parent;
+    }
+    currentScope.calls.push(callMeta);
   }
-  currentScope.calls.push(callMeta);
-  return { result: invocationType, inferenced };
+  const invocationType = result instanceof VariableInfo ? result.type : result;
+  if (currentScope === moduleScope && invocationType.parent.priority > TypeScope.MODULE_SCOPE_PRIORITY) {
+    const getArgumentTypeName = arg => String((arg instanceof VariableInfo ? arg.type : arg).name);
+    throw new HegelError(
+      `Could not deduce type "${
+        String(invocationType.name)
+      }" arising from the arguments${
+        args.length > 0 ? " " : ""
+      }${args.map(getArgumentTypeName).toString()}.
+Please, provide type parameters for the call or provide default type value for parameters
+of "${String(targetType.name)}" function.`,
+      node.loc
+    );
+  }
+  return { result, inferenced };
 }
 
 function invoke({
@@ -1207,18 +1279,24 @@ export function addPropertyToThis(
   middlecompute: Handler,
   postcompute: Handler
 ) {
-  let propertyName;
-  const isPrivate = currentNode.type === NODE.CLASS_PRIVATE_PROPERTY;
-  if (isPrivate) {
-    propertyName = `#${currentNode.key.id.name}`;
-  } else {
-    propertyName = currentNode.key.name || `${currentNode.key.value}`;
-  }
   // $FlowIssue
   const currentScope: VariableScope = getParentForNode(
     currentNode,
     parentNode,
     moduleScope
+  );
+  const propertyName = getPropertyName(
+        currentNode,
+        node => addCallToTypeGraph(
+            node,
+            moduleScope,
+            currentScope,
+            parentNode,
+            precompute,
+            middlecompute,
+            postcompute,
+            { skipAddingCalls: true }
+        )
   );
   const currentClassScope: any = findNearestScopeByType(
     [VariableScope.CLASS_TYPE, VariableScope.OBJECT_TYPE],
@@ -1261,7 +1339,8 @@ export function addPropertyToThis(
     new Meta(currentNode.loc),
     false,
     false,
-    isPrivate
+    currentNode.type === NODE.CLASS_PRIVATE_METHOD ||
+    currentNode.type === NODE.CLASS_PRIVATE_PROPERTY
   );
   if (!(selfType instanceof ObjectType)) {
     throw new Error("Never!!!");
@@ -1335,16 +1414,20 @@ export function addMethodToThis(
   if (classScope.isProcessed) {
     return;
   }
-  let propertyName;
+  const propertyName = getPropertyName(
+    currentNode,
+    node => addCallToTypeGraph(
+          node,
+          moduleScope,
+          currentScope,
+          parentNode,
+          pre,
+          middle,
+          post,
+          { skipAddingCalls: true }
+    )
+  );
   const isPrivate = currentNode.type === NODE.CLASS_PRIVATE_METHOD;
-  if (isPrivate) {
-    propertyName = `#${currentNode.key.id.name}`;
-  } else {
-    propertyName = currentNode.key.name || `${currentNode.key.value}`;
-  }
-  if (currentNode.kind === "constructor") {
-    propertyName = CONSTRUCTABLE;
-  }
   const self = classScope.findVariable({ name: THIS_TYPE });
   // $FlowIssue
   const classVar: VariableInfo =

@@ -43,7 +43,6 @@ export class TypeVar extends Type {
     isUserDefined?: boolean = false
   ) {
     super(name, meta);
-    this.name = name;
     this.constraint = constraint;
     this.defaultType = defaultType;
     this._isUserDefined = isUserDefined;
@@ -97,6 +96,9 @@ export class TypeVar extends Type {
         this.parent.findTypeWithName(type.name) === type)
     ) {
       return false;
+    }
+    if (type instanceof TypeVar && type.constraint !== undefined && this.constraint !== undefined) {
+      return this.constraint.isPrincipalTypeFor(type.constraint);
     }
     return super.isPrincipalTypeFor(type);
   }
@@ -175,6 +177,7 @@ export class TypeVar extends Type {
   contains(type: Type) {
     return (
       (this.constraint != undefined && this.constraint.contains(type)) ||
+      (this.root != undefined && this.root.contains(type)) ||
       this.equalsTo(type, true, true)
     );
   }

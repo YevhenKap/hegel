@@ -16,6 +16,7 @@ import { $ThrowsResult } from "../type-graph/types/throws-type";
 import { VariableScope } from "../type-graph/variable-scope";
 import { $Intersection } from "../type-graph/types/intersection-type";
 import { CollectionType } from "../type-graph/types/collection-type";
+import { addCallToTypeGraph } from "../type-graph/call";
 import { getDeclarationName } from "./common";
 import { PositionedModuleScope } from "../type-graph/module-scope";
 import { FunctionType, RestArgument } from "../type-graph/types/function-type";
@@ -414,6 +415,7 @@ export function getTypeFromTypeAnnotation(
         annotation.type === NODE.TS_INTERFACE_DECLARATION || annotation.inexact;
       const properties =
         objectBody.properties || objectBody.body || objectBody.members;
+      const computed = objectBody.indexers || [];
       const superTypes = (annotation.extends || []).map(node =>
         getTypeFromTypeAnnotation(
           { typeAnnotation: node },
@@ -430,7 +432,7 @@ export function getTypeFromTypeAnnotation(
       );
       const isNotTypeDefinition =
         annotation.type === NODE.OBJECT_TYPE_ANNOTATION;
-      const params = properties.flatMap(property => {
+      const params = [...properties, ...computed].flatMap(property => {
         if (property.type === NODE.OBJECT_TYPE_SPREAD_PROPERTY) {
           const spreadType = getTypeFromTypeAnnotation(
             { typeAnnotation: property.argument },
@@ -455,23 +457,60 @@ export function getTypeFromTypeAnnotation(
             property.loc
           );
         }
-        return [
-          [
-            getPropertyName(property),
-            getTypeFromTypeAnnotation(
-              { typeAnnotation: property.value || property },
-              typeScope,
-              currentScope,
-              rewritable,
-              self,
-              parentNode,
-              typeGraph,
-              precompute,
-              middlecompute,
-              postcompute
-            )
-          ]
-        ];
+        let key;
+        if (property.type === NODE.OBJECT_TYPE_INDEXER) {
+          key = getTypeFromTypeAnnotation(
+            { typeAnnotation: property.key },
+            typeScope,
+            currentScope,
+            rewritable,
+            self,
+            parentNode,
+            typeGraph,
+            precompute,
+            middlecompute,
+            postcompute
+          );
+        } else if (property.key !== undefined && property.key.type !== NODE.IDENTIFIER) {
+          const callResult = addCallToTypeGraph(
+            property.key,
+            typeGraph,
+            currentScope,
+            parentNode,
+            precompute,
+            middlecompute,
+            postcompute
+          ).result;
+          key = callResult instanceof VariableInfo ? callResult.type : callResult; 
+          key = key.getOponentType(key);
+          if (
+              key.isSubtypeOf !== Type.String &&
+              key.isSubtypeOf !== Type.Symbol &&
+              key.isSubtypeOf !== Type.Number
+          ) {
+            throw new HegelError(`Computed property type should be String, Symbol or Number literal type, but given "${String(key.name)}"`, property.key.loc);
+          }
+         if (key.isSubtypeOf === Type.String) {
+          key = String(key.name).slice(1, -1);
+         } else if (key.isSubtypeOf === Type.Number) {
+          key = String(key.name);
+         }
+        } else {
+          key = getPropertyName(property);
+        }
+        return [[key, getTypeFromTypeAnnotation(
+            { typeAnnotation: property.value || property },
+            typeScope,
+            currentScope,
+            rewritable,
+            self,
+            parentNode,
+            typeGraph,
+            precompute,
+            middlecompute,
+            postcompute
+          )
+        ]];
       });
       if (customName === undefined) {
         customName =
@@ -754,12 +793,16 @@ export function getTypeFromTypeAnnotation(
         false,
         throwableType && throwableType.errorType
       );
-      const type = FunctionType.term(typeName, {}, args, returnType);
-      type.throwable = throwableType && throwableType.errorType;
-      if (genericParams.length === 0 || !(type instanceof FunctionType)) {
-        return type;
+      let type = FunctionType.term(typeName, {}, args, returnType);
+      if (type instanceof FunctionType) {
+        type.throwable = throwableType && throwableType.errorType;
       }
-      return GenericType.new(typeName, {}, genericParams, localTypeScope, type);
+      if (genericParams.length !== 0 && type instanceof FunctionType) {
+        type = GenericType.new(typeName, {}, genericParams, localTypeScope, type);
+      }
+      return typeNode.typeAnnotation.optional
+        ? UnionType.term(null, {}, [type, Type.Undefined]) 
+        : type;
   }
   return Type.Unknown;
 }
@@ -837,7 +880,7 @@ export function createSelf(node: Node, parent: TypeScope) {
 
 function getPropertyName(property: Node): string {
   if (property.key !== undefined) {
-    return property.key.name;
+    return property.key.name || String(property.key.value);
   }
   switch (property.type) {
     case NODE.TS_CALL_SIGNATURE_DECLARATION:
@@ -955,4 +998,23 @@ export function pickTruthy(type: Type) {
 
 export function isFalsy(type: Type) {
   return getFalsy().includes(type);
+}
+
+export function getIteratorValueType(iterator: Type, isIterable: boolean) {
+  iterator = iterator.getOponentType(iterator);
+  const $SymbolConstructor = Type.find("SymbolConstructor"); 
+  const $ReturnType = Type.find("$ReturnType"); 
+  const $PropertyType = Type.find("$PropertyType"); 
+  const symbolIterator = $PropertyType.applyGeneric([$SymbolConstructor, Type.term("'iterator'", { isSubtypeOf: Type.String })]);
+  if (isIterable) {
+    const IteratorMethodType =  $PropertyType.applyGeneric([iterator, symbolIterator]);
+    iterator = $ReturnType.applyGeneric([IteratorMethodType])
+  }
+  const NextMethodType = $PropertyType.applyGeneric([iterator, Type.term("'next'", { isSubtypeOf: Type.String })]);
+  const YieldType = $ReturnType.applyGeneric([NextMethodType]);
+  let ValueType = $PropertyType.applyGeneric([YieldType, Type.term("'value'", { isSubtypeOf: Type.String })]);
+  if (ValueType instanceof UnionType && ValueType.variants.includes(Type.Unknown)) {
+    ValueType = UnionType.term(null, {}, ValueType.variants.filter(t => t !== Type.Unknown));
+  }
+  return ValueType;  
 }

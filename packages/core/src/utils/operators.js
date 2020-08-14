@@ -5,9 +5,9 @@ import { TypeScope } from "../type-graph/type-scope";
 import { UnionType } from "../type-graph/types/union-type";
 import { ObjectType } from "../type-graph/types/object-type";
 import { GenericType } from "../type-graph/types/generic-type";
-import { $BottomType } from "../type-graph/types/bottom-type";
 import { FunctionType } from "../type-graph/types/function-type";
 import { VariableInfo } from "../type-graph/variable-info";
+import { $AppliedStrictUnion } from "../type-graph/types/strict-union-type";
 
 const zeroMetaLocation = new Meta();
 
@@ -55,10 +55,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", { parent: typeScope }, [
-                Type.BigInt,
-                Type.Number
-              ])
+              $AppliedStrictUnion.term(
+                null, 
+                {}, 
+                  UnionType.term(null, { parent: typeScope }, [
+                    Type.BigInt,
+                    Type.Number
+                  ])
+              )
             )
           ]
         ],
@@ -76,10 +80,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", { parent: typeScope }, [
-                Type.BigInt,
-                Type.Number
-              ])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -106,10 +114,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", { parent: typeScope }, [
-                Type.BigInt,
-                Type.Number
-              ])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -162,14 +174,22 @@ const mixBaseOperators = moduleScope => {
           "await",
           genericFunction(
             typeScope,
-            parent => [["T", TypeVar.term("T", { parent })]],
-            l => [
-              UnionType.term(null, {}, [
-                Type.find("Promise").applyGeneric([l.body.get("T")]),
-                l.body.get("T")
-              ])
-            ],
-            l => l.body.get("T")
+            parent => {
+              const V = TypeVar.term("V", { parent });
+              return [
+                ["V", V],
+                [
+                  "T",
+                  TypeVar.term(
+                    "T",
+                    { parent },
+                    Type.find("Thenable").applyGeneric([V])
+                  )
+                ]
+              ];
+            },
+            l => [l.body.get("T")],
+            l => l.body.get("V")
           )
         ]
       : [
@@ -227,7 +247,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -245,7 +272,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -263,7 +297,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -281,7 +322,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -299,11 +347,15 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number | string", {}, [
-                Type.BigInt,
-                Type.Number,
-                Type.String
-              ])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.String,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -321,7 +373,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -339,7 +398,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -357,7 +423,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -375,7 +448,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -393,7 +473,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -411,7 +498,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -429,7 +523,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -447,7 +548,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -465,7 +573,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -483,7 +598,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -537,11 +659,15 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number | string", {}, [
-                Type.BigInt,
-                Type.Number,
-                Type.String
-              ])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.String,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -559,7 +685,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -577,7 +710,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -595,7 +735,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -613,7 +760,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -631,7 +785,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -649,7 +810,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -676,7 +844,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -694,7 +869,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
@@ -712,7 +894,14 @@ const mixBaseOperators = moduleScope => {
             TypeVar.term(
               "T",
               { parent },
-              UnionType.term("bigint | number", {}, [Type.BigInt, Type.Number])
+              $AppliedStrictUnion.term(
+                null, 
+                {},
+                UnionType.term(null, { parent: typeScope }, [
+                  Type.BigInt,
+                  Type.Number
+                ])
+              )
             )
           ]
         ],
