@@ -421,6 +421,9 @@ function resolveOuterTypeVarsFromCall(
       if (!shouldSetNewRoot) {
         continue;
       }
+      if (call.targetName === "===" || call.targetName === "!==") {
+        root = getVariableType(Type.Unknown, root, typeScope, true);
+      }
       variable.root = root;
       if (
         callTargetType instanceof GenericType &&
@@ -506,7 +509,7 @@ export function implicitApplyGeneric(
         }
         root = principal;
       }
-      appliedArgumentsTypes.set(variable, root);
+      appliedArgumentsTypes.set(variable, Type.getTypeRoot(root));
     }
     if (maybeBottom instanceof $BottomType) {
       maybeBottom.unrootSubordinateType();
