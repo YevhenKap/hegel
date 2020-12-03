@@ -1,10 +1,10 @@
 exports.ids = [58];
 exports.modules = {
 
-/***/ "../node_modules/monaco-editor/esm/vs/basic-languages/tcl/tcl.js":
-/*!***********************************************************************!*\
-  !*** ../node_modules/monaco-editor/esm/vs/basic-languages/tcl/tcl.js ***!
-  \***********************************************************************/
+/***/ "../../../node_modules/monaco-editor/esm/vs/basic-languages/tcl/tcl.js":
+/*!**************************************************************************************************!*\
+  !*** /home/runner/work/hegel/hegel/node_modules/monaco-editor/esm/vs/basic-languages/tcl/tcl.js ***!
+  \**************************************************************************************************/
 /*! exports provided: conf, language */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -139,7 +139,7 @@ var language = {
         specialFunc: [
             [/"/, { token: 'string', next: '@dstring' }],
             [/'/, { token: 'string', next: '@sstring' }],
-            [/(?:(?:\:\:?)?[a-zA-Z_]\w*)+/, { token: 'type', next: '@pop' }],
+            [/\S+/, { token: 'type', next: '@pop' }],
         ]
     }
 };

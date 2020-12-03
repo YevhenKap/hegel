@@ -81,23 +81,23 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = "../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js");
+/******/ 	return __webpack_require__(__webpack_require__.s = "../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js");
 /******/ })
 /************************************************************************/
 /******/ ({
 
-/***/ "../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js":
-/*!*****************************************************************************!*\
-  !*** ../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js ***!
-  \*****************************************************************************/
+/***/ "../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js":
+/*!********************************************************************************************************!*\
+  !*** /home/runner/work/hegel/hegel/node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js ***!
+  \********************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 
-				var addMethods = __webpack_require__(/*! ../../../../../workerize-loader/dist/rpc-wrapper.js */ "../node_modules/workerize-loader/dist/rpc-wrapper.js")
+				var addMethods = __webpack_require__(/*! ../../../../../workerize-loader/dist/rpc-wrapper.js */ "../../../node_modules/workerize-loader/dist/rpc-wrapper.js")
 				var methods = []
 				module.exports = function() {
-					var w = new Worker(__webpack_require__.p + "9882c219518b9ac38468.worker.js", { name: "[hash].worker.js" })
+					var w = new Worker(__webpack_require__.p + "1ce66c6ad5e778898b1e.worker.js", { name: "[hash].worker.js" })
 					addMethods(w, methods)
 					
 					return w
@@ -106,22 +106,22 @@
 
 /***/ }),
 
-/***/ "../node_modules/workerize-loader/dist/rpc-wrapper.js":
-/*!************************************************************!*\
-  !*** ../node_modules/workerize-loader/dist/rpc-wrapper.js ***!
-  \************************************************************/
+/***/ "../../../node_modules/workerize-loader/dist/rpc-wrapper.js":
+/*!***************************************************************************************!*\
+  !*** /home/runner/work/hegel/hegel/node_modules/workerize-loader/dist/rpc-wrapper.js ***!
+  \***************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
 function addMethods(worker, methods) {
-  var c = 0;
-  var callbacks = {};
-  worker.addEventListener('message', function (e) {
-    var d = e.data;
-    if (d.type !== 'RPC') { return; }
+  let c = 0;
+  let callbacks = {};
+  worker.addEventListener('message', e => {
+    let d = e.data;
+    if (d.type !== 'RPC') return;
 
     if (d.id) {
-      var f = callbacks[d.id];
+      let f = callbacks[d.id];
 
       if (f) {
         delete callbacks[d.id];
@@ -133,28 +133,23 @@ function addMethods(worker, methods) {
         }
       }
     } else {
-      var evt = document.createEvent('Event');
+      let evt = document.createEvent('Event');
       evt.initEvent(d.method, false, false);
       evt.data = d.params;
       worker.dispatchEvent(evt);
     }
   });
-  methods.forEach(function (method) {
-    worker[method] = function () {
-      var params = [], len = arguments.length;
-      while ( len-- ) params[ len ] = arguments[ len ];
-
-      return new Promise(function (a, b) {
-      var id = ++c;
+  methods.forEach(method => {
+    worker[method] = (...params) => new Promise((a, b) => {
+      let id = ++c;
       callbacks[id] = [a, b];
       worker.postMessage({
         type: 'RPC',
-        id: id,
-        method: method,
-        params: params
+        id,
+        method,
+        params
       });
     });
-    };
   });
 }
 

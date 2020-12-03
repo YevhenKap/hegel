@@ -1,10 +1,10 @@
 exports.ids = [57];
 exports.modules = {
 
-/***/ "../node_modules/monaco-editor/esm/vs/basic-languages/swift/swift.js":
-/*!***************************************************************************!*\
-  !*** ../node_modules/monaco-editor/esm/vs/basic-languages/swift/swift.js ***!
-  \***************************************************************************/
+/***/ "../../../node_modules/monaco-editor/esm/vs/basic-languages/swift/swift.js":
+/*!******************************************************************************************************!*\
+  !*** /home/runner/work/hegel/hegel/node_modules/monaco-editor/esm/vs/basic-languages/swift/swift.js ***!
+  \******************************************************************************************************/
 /*! exports provided: conf, language */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -72,12 +72,23 @@ var language = {
     escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
     tokenizer: {
         root: [
+            { include: '@whitespace' },
             { include: '@comment' },
             { include: '@attribute' },
             { include: '@literal' },
             { include: '@keyword' },
             { include: '@invokedmethod' },
             { include: '@symbol' },
+        ],
+        whitespace: [
+            [/\s+/, 'white'],
+            [/"""/, 'string.quote', '@endDblDocString']
+        ],
+        endDblDocString: [
+            [/[^"]+/, 'string'],
+            [/\\"/, 'string'],
+            [/"""/, 'string.quote', '@popall'],
+            [/"/, 'string']
         ],
         symbol: [
             [/[{}()\[\]]/, '@brackets'],
