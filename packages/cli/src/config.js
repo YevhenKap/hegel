@@ -3,15 +3,15 @@ import { writeFileSync, existsSync } from "fs";
 import { join, dirname, isAbsolute } from "path";
 import type { ParserOptions } from "@babel/parser";
 
-const BABELRC: ParserOptions = { 
+const BABELRC: ParserOptions = {
   sourceType: "module",
   plugins: [
     "bigInt",
     "classProperties",
     "classPrivateMethods",
     "classPrivateProperties",
-    ["flow", { all: true }]
-  ]
+    ["flow", { all: true }],
+  ],
 };
 
 const CWD = process.cwd();
@@ -23,18 +23,19 @@ const CONFIG_NAME = ".hegelrc";
 const DEFAULT_CONFIG = {
   config: {
     include: ["./**/*.js"],
-    exclude: ["./node_modules/**"],
+    exclude: ["./node_modules/**", "./.*"],
     workingDirectory: CWD,
     babel: BABELRC,
-    typings: ["./@types", "./node_modules/@types"]
+    typings: ["./@types", "./node_modules/@types"],
   },
-  filepath: join(CWD, CONFIG_NAME)
+  filepath: join(CWD, CONFIG_NAME),
 };
 
 const DEFAULT_CONFIG_CONTENT = `include:
   - ./**/*.js
 exclude:
   - ./node_modules/**
+  - ./.*
 types:
   - ./@types
   - ./node_modules/@types`;
@@ -47,7 +48,7 @@ export type Config = {
   workingDirectory: string,
   environment: ?Environment,
   typings: Array<string>,
-  babel: ParserOptions
+  babel: ParserOptions,
 };
 
 export async function getConfig(workingDirectory = CWD) {
@@ -55,8 +56,8 @@ export async function getConfig(workingDirectory = CWD) {
     (await getMainConfigs(workingDirectory)) || DEFAULT_CONFIG;
   const hegel = Object.assign(DEFAULT_CONFIG.config, hegelConfig.config);
   const projectRoot = dirname(hegelConfig.filepath);
-  const typings = hegel.typings.map(
-    path => (isAbsolute(path) ? path : join(projectRoot, path))
+  const typings = hegel.typings.map((path) =>
+    isAbsolute(path) ? path : join(projectRoot, path)
   );
   return Object.assign(hegel, { babel: BABELRC, typings });
 }
